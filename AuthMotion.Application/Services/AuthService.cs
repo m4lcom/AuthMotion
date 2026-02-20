@@ -8,10 +8,12 @@ namespace AuthMotion.Application.Services;
 public class AuthService : IAuthService
 {
     private readonly IUserRepository _userRepository;
+    private readonly IJwtTokenGenerator _jwtTokenGenerator;
 
-    public AuthService(IUserRepository userRepository)
+    public AuthService(IUserRepository userRepository, IJwtTokenGenerator jwtTokenGenerator)
     {
         _userRepository = userRepository;
+        _jwtTokenGenerator = jwtTokenGenerator;
     }
 
     public async Task<string> RegisterAsync(RegisterRequest request)
@@ -38,6 +40,6 @@ public class AuthService : IAuthService
         {
             throw new UnauthorizedException("Invalid email or password.");
         }
-        return "Login successful.";
+        return _jwtTokenGenerator.GenerateToken(user);
     }
 }
