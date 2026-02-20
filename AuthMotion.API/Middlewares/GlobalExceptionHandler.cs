@@ -21,6 +21,16 @@ public class GlobalExceptionHandler : IExceptionHandler
             return true; // Le decimos a .NET "Ya me encargué, no hagas más nada"
         }
 
+        if (exception is UnauthorizedException unauthorizedException)
+        {
+            httpContext.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            await httpContext.Response.WriteAsJsonAsync(
+                new { error = unauthorizedException.Message },
+                cancellationToken);
+
+            return true; // Le decimos a .NET "Ya me encargué, no hagas más nada"
+        }
+
         // 2. Manejamos cualquier otro error inesperado (Bugs, Base de datos caída, etc)
         httpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;
         await httpContext.Response.WriteAsJsonAsync(

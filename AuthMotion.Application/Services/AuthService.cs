@@ -30,4 +30,14 @@ public class AuthService : IAuthService
         await _userRepository.AddAsync(user);
         return "User registered successfully.";
     }
+
+    public async Task<string> LoginAsync(LoginRequest request)
+    {
+        var user = await _userRepository.GetByEmailAsync(request.Email);
+        if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+        {
+            throw new UnauthorizedException("Invalid email or password.");
+        }
+        return "Login successful.";
+    }
 }

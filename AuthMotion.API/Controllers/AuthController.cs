@@ -21,4 +21,11 @@ public class AuthController : ControllerBase
         var result = await _authService.RegisterAsync(request);
         return Ok(new { message = result });
     }
+
+    [HttpPost("login")]
+    public async Task<IActionResult> Login([FromBody] LoginRequest request)
+    {
+        var result = await _authService.LoginAsync(request);
+        return Ok(new { message = result });
+    }
 }
