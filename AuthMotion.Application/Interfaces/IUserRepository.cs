@@ -7,4 +7,5 @@ public interface IUserRepository
     Task<bool> IsRegisteredAsync(string email);
     Task AddAsync(User user);
     Task<User?> GetByEmailAsync(string email);
+    Task UpdateAsync(User user);
 }

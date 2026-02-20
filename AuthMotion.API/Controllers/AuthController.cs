@@ -48,4 +48,11 @@ public class AuthController : ControllerBase
             }
         });
     }
+
+    [HttpPost("refresh")]
+    public async Task<IActionResult> RefreshToken([FromBody] TokenRequest request)
+    {
+        var result = await _authService.RefreshTokenAsync(request);
+        return Ok(new { token = result });
+    }
 }
