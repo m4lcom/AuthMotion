@@ -17,6 +17,9 @@ public class AuthService : IAuthService
         _jwtTokenGenerator = jwtTokenGenerator;
     }
 
+    /// <summary>
+    /// Handles user registration and password hashing.
+    /// </summary>
     public async Task<string> RegisterAsync(RegisterRequest request)
     {
         if (await _userRepository.IsRegisteredAsync(request.Email))
@@ -34,6 +37,9 @@ public class AuthService : IAuthService
         return "User registered successfully.";
     }
 
+    /// <summary>
+    /// Validates credentials and generates the initial token pair.
+    /// </summary>
     public async Task<AuthResponse> LoginAsync(LoginRequest request)
     {
         var user = await _userRepository.GetByEmailAsync(request.Email);
@@ -50,36 +56,36 @@ public class AuthService : IAuthService
 
         await _userRepository.UpdateAsync(user);
 
-        return new AuthResponse
-        {
-            Token = token,
-            RefreshToken = refreshToken
-        };
+        return new AuthResponse { Token = token, RefreshToken = refreshToken };
     }
 
+    /// <summary>
+    /// Rotates the refresh token and issues a new access token.
+    /// </summary>
     public async Task<AuthResponse> RefreshTokenAsync(TokenRequest request)
     {
         var principal = _jwtTokenGenerator.GetPrincipalFromExpiredToken(request.Token);
         var email = principal.FindFirst(ClaimTypes.Email)?.Value;
 
+        if (string.IsNullOrEmpty(email)) throw new UnauthorizedException("Invalid token claims.");
+
         var user = await _userRepository.GetByEmailAsync(email);
+
+        // Validation: User must exist, tokens must match, and refresh token must not be expired
         if (user == null || user.RefreshToken != request.RefreshToken || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
         {
-            throw new UnauthorizedException("Invalid refresh token.");
+            throw new UnauthorizedException("Invalid or expired refresh token.");
         }
 
         var newToken = _jwtTokenGenerator.GenerateToken(user);
         var newRefreshToken = _jwtTokenGenerator.GenerateRefreshToken();
 
+        // Token Rotation: Save the new refresh token to the database
         user.RefreshToken = newRefreshToken;
         user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
 
         await _userRepository.UpdateAsync(user);
 
-        return new AuthResponse
-        {
-            Token = newToken,
-            RefreshToken = newRefreshToken
-        };
+        return new AuthResponse { Token = newToken, RefreshToken = newRefreshToken };
     }
 }

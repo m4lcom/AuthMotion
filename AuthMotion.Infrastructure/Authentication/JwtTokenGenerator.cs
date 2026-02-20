@@ -18,26 +18,25 @@ public class JwtTokenGenerator : IJwtTokenGenerator
         _configuration = configuration;
     }
 
+    /// <summary>
+    /// Generates a Short-lived JWT Access Token.
+    /// </summary>
     public string GenerateToken(User user)
     {
         var jwtSettings = _configuration.GetSection("JwtSettings");
-        var secretKey = jwtSettings["Secret"] ?? throw new Exception("JWT Secret is missing in appsettings.");
+        var secretKey = jwtSettings["Secret"] ?? throw new Exception("JWT Secret is missing.");
 
-        // 1. Transformamos la clave de texto a bytes
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
 
-        // 2. Definimos los "Claims" (Datos del usuario que van en el token)
         var claims = new List<Claim>
         {
             new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new Claim(JwtRegisteredClaimNames.Email, user.Email),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()) // ID único del token
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
 
-        // 3. Elegimos el algoritmo de encriptación (HS256 es el estándar)
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-        // 4. Armamos el token con sus fechas de vencimiento
         var token = new JwtSecurityToken(
             issuer: jwtSettings["Issuer"],
             audience: jwtSettings["Audience"],
@@ -46,19 +45,24 @@ public class JwtTokenGenerator : IJwtTokenGenerator
             signingCredentials: creds
         );
 
-        // 5. Lo serializamos a string para mandarlo por HTTP
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
+    /// <summary>
+    /// Generates a cryptographically strong random string for refresh tokens.
+    /// </summary>
     public string GenerateRefreshToken()
     {
         var randomNumber = new byte[64];
         using var rng = RandomNumberGenerator.Create();
         rng.GetBytes(randomNumber);
         return Convert.ToBase64String(randomNumber);
-
     }
 
+    /// <summary>
+    /// Validates an expired or valid token and extracts the claims principal.
+    /// Useful for token refresh scenarios.
+    /// </summary>
     public ClaimsPrincipal GetPrincipalFromExpiredToken(string token)
     {
         var jwtSettings = _configuration.GetSection("JwtSettings");
@@ -70,7 +74,7 @@ public class JwtTokenGenerator : IJwtTokenGenerator
             ValidateIssuer = true,
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey!)),
-            ValidateLifetime = false, // Ignoramos la expiración para poder renovar
+            ValidateLifetime = false, // We ignore expiration to allow refreshing
             ValidIssuer = jwtSettings["Issuer"],
             ValidAudience = jwtSettings["Audience"]
         };
@@ -78,10 +82,11 @@ public class JwtTokenGenerator : IJwtTokenGenerator
         var tokenHandler = new JwtSecurityTokenHandler();
         var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out SecurityToken securityToken);
 
+        // Security check: Ensure the token uses the HmacSha256 algorithm
         if (securityToken is not JwtSecurityToken jwtSecurityToken ||
             !jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase))
         {
-            throw new SecurityTokenException("Invalid token");
+            throw new SecurityTokenException("Invalid token algorithm");
         }
 
         return principal;

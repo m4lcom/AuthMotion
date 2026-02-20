@@ -17,6 +17,9 @@ public class AuthController : ControllerBase
         _authService = authService;
     }
 
+    /// <summary>
+    /// register a new user in the system.
+    /// </summary>
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request)
     {
@@ -24,13 +27,19 @@ public class AuthController : ControllerBase
         return Ok(new { message = result });
     }
 
+    /// <summary>
+    /// authenticate a user and returns tokens.
+    /// </summary>
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
         var result = await _authService.LoginAsync(request);
-        return Ok(new { token = result });
+        return Ok(result);
     }
 
+    /// <summary>
+    /// retrieves the current authenticate user's information form claims.
+    /// </summary>
     [HttpGet("me")]
     [Authorize]
     public IActionResult GetMe()
@@ -49,10 +58,13 @@ public class AuthController : ControllerBase
         });
     }
 
+    /// <summary>
+    /// generate a new pair of tokens using a valid refresh token.
+    /// </summary>
     [HttpPost("refresh")]
     public async Task<IActionResult> RefreshToken([FromBody] TokenRequest request)
     {
         var result = await _authService.RefreshTokenAsync(request);
-        return Ok(new { token = result });
+        return Ok(result);
     }
 }
