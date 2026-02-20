@@ -1,6 +1,8 @@
 using AuthMotion.Application.DTOs;
 using AuthMotion.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace AuthMotion.API.Controllers;
 
@@ -27,5 +29,23 @@ public class AuthController : ControllerBase
     {
         var result = await _authService.LoginAsync(request);
         return Ok(new { token = result });
+    }
+
+    [HttpGet("me")]
+    [Authorize]
+    public IActionResult GetMe()
+    {
+        var email = User.FindFirst(ClaimTypes.Email)?.Value;
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        return Ok(new
+        {
+            message = "User identity retrieved successfully",
+            data = new
+            {
+                Email = email,
+                Id = userId
+            }
+        });
     }
 }
