@@ -48,15 +48,7 @@ public class AuthService : IAuthService
             throw new UnauthorizedException("Invalid credentials.");
         }
 
-        var token = _jwtTokenGenerator.GenerateToken(user);
-        var refreshToken = _jwtTokenGenerator.GenerateRefreshToken();
-
-        user.RefreshToken = refreshToken;
-        user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
-
-        await _userRepository.UpdateAsync(user);
-
-        return new AuthResponse { Token = token, RefreshToken = refreshToken };
+        return await GenerateAndSaveTokensAsync(user);
     }
 
     /// <summary>
@@ -77,15 +69,44 @@ public class AuthService : IAuthService
             throw new UnauthorizedException("Invalid or expired refresh token.");
         }
 
-        var newToken = _jwtTokenGenerator.GenerateToken(user);
-        var newRefreshToken = _jwtTokenGenerator.GenerateRefreshToken();
+        return await GenerateAndSaveTokensAsync(user);
+    }
 
-        // Token Rotation: Save the new refresh token to the database
-        user.RefreshToken = newRefreshToken;
+    /// <summary>
+    /// Handles external login (like Google) by generating tokens for the user.
+    /// </summary>
+    public async Task<AuthResponse> ExternalLoginAsync(string email)
+    {
+        var user = await _userRepository.GetByEmailAsync(email);
+        if (user == null)
+        {
+            user = new User
+            {
+                Email = email,
+                // Generate a random hash to prevent breaking BCrypt in traditional login.
+                // This forces the user to always use the external provider.
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString())
+            };
+
+            await _userRepository.AddAsync(user);
+        }
+
+        return await GenerateAndSaveTokensAsync(user);
+    }
+
+    /// <summary>
+    /// Centralizes the generation and persistence of the authentication tokens.
+    /// </summary>
+    private async Task<AuthResponse> GenerateAndSaveTokensAsync(User user)
+    {
+        var token = _jwtTokenGenerator.GenerateToken(user);
+        var refreshToken = _jwtTokenGenerator.GenerateRefreshToken();
+
+        user.RefreshToken = refreshToken;
         user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
 
         await _userRepository.UpdateAsync(user);
 
-        return new AuthResponse { Token = newToken, RefreshToken = newRefreshToken };
+        return new AuthResponse { Token = token, RefreshToken = refreshToken };
     }
 }
