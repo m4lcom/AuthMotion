@@ -12,6 +12,8 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,6 +25,21 @@ builder.Services.AddControllers()
     {
         options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
     });
+
+builder.Services.AddRateLimiter(options =>
+{
+    // Le decimos que devuelva un 429 en lugar de un 503 cuando se pase del límite
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    // Creamos la política específica para la recuperación de contraseña
+    options.AddFixedWindowLimiter("PasswordRecovery", limiterOptions =>
+    {
+        limiterOptions.PermitLimit = 3; // Máximo 3 peticiones
+        limiterOptions.Window = TimeSpan.FromMinutes(15); // En una ventana de 15 minutos
+        limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        limiterOptions.QueueLimit = 0; // 0 significa que rechaza al instante, no encola las peticiones extra
+    });
+});
 builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -70,6 +87,8 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
+
+app.UseRateLimiter();
 
 app.UseHttpsRedirection();
 app.UseAuthentication();

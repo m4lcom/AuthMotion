@@ -12,4 +12,6 @@ public interface IAuthService
     Task<string> SetupTwoFactorAsync(string email);
     Task<bool> ConfirmTwoFactorAsync(string email, string code);
     Task<AuthResponse> Verify2FALoginAsync(Verify2FARequest request);
+    Task<string> ForgotPasswordAsync(ForgotPasswordRequest request);
+    Task<string> ResetPasswordAsync(ResetPasswordRequest request);
 }

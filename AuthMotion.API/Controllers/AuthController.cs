@@ -6,6 +6,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace AuthMotion.API.Controllers;
 
@@ -162,5 +163,27 @@ public class AuthController : ControllerBase
     {
         var response = await _authService.Verify2FALoginAsync(request);
         return Ok(response);
+    }
+
+    /// <summary>
+    /// Sends a password recovery email with a 6-digit token. 
+    /// Protected by Rate Limiting to prevent email spam.
+    /// </summary>
+    [HttpPost("forgot-password")]
+    [EnableRateLimiting("PasswordRecovery")] // 👈 ¡Acá activamos el escudo!
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+    {
+        var result = await _authService.ForgotPasswordAsync(request);
+        return Ok(new { message = result });
+    }
+
+    /// <summary>
+    /// Validates the token and resets the user's password.
+    /// </summary>
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+    {
+        var result = await _authService.ResetPasswordAsync(request);
+        return Ok(new { message = result });
     }
 }

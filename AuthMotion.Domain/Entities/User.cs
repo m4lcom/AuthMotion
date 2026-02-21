@@ -23,4 +23,8 @@ public class User
     public string? RefreshToken { get; set; }
     public DateTime? RefreshTokenExpiryTime { get; set; }
 
+    // reset password
+    public string? PasswordResetToken { get; set; }
+    public DateTime? PasswordResetTokenExpiryTime { get; set; }
+
 }

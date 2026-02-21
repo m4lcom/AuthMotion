@@ -211,4 +211,53 @@ public class AuthService : IAuthService
         // Si es válido, emitimos los tokens finales
         return await GenerateAndSaveTokensAsync(user);
     }
+
+    public async Task<string> ForgotPasswordAsync(ForgotPasswordRequest request)
+    {
+        var user = await _userRepository.GetByEmailAsync(request.Email);
+
+        // Regla de oro: No revelar si el mail existe. Cortamos silenciosamente.
+        if (user == null)
+        {
+            return "If the email is registered, a password reset code has been sent.";
+        }
+
+        // Generamos un código numérico de 6 dígitos
+        var resetToken = Random.Shared.Next(100000, 999999).ToString();
+
+        user.PasswordResetToken = resetToken;
+        user.PasswordResetTokenExpiryTime = DateTime.UtcNow.AddMinutes(15); // Expira rápido
+
+        await _userRepository.UpdateAsync(user);
+
+        var emailBody = $@"
+            <h2>Recuperación de Contraseña</h2>
+            <p>Tu código para restablecer tu contraseña es:</p>
+            <h1 style='color: #ef4444; letter-spacing: 5px;'>{resetToken}</h1>
+            <p>Este código expira en 15 minutos. Si no solicitaste este cambio, ignorá este correo y tu cuenta seguirá segura.</p>";
+
+        await _emailService.SendEmailAsync(user.Email, "Recupera tu contraseña - AuthMotion", emailBody);
+
+        return "If the email is registered, a password reset code has been sent.";
+    }
+
+    public async Task<string> ResetPasswordAsync(ResetPasswordRequest request)
+    {
+        var user = await _userRepository.GetByEmailAsync(request.Email);
+
+        // Validamos usuario, código y tiempo de expiración de un solo golpe
+        if (user == null || user.PasswordResetToken != request.Token || user.PasswordResetTokenExpiryTime <= DateTime.UtcNow)
+        {
+            throw new UnauthorizedException("Invalid or expired password reset token.");
+        }
+
+        // Hasheamos la nueva contraseña y limpiamos los tokens de recuperación
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+        user.PasswordResetToken = null;
+        user.PasswordResetTokenExpiryTime = null;
+
+        await _userRepository.UpdateAsync(user);
+
+        return "Password has been reset successfully. You can now log in with your new password.";
+    }
 }
