@@ -129,4 +129,38 @@ public class AuthController : ControllerBase
         var result = await _authService.VerifyEmailAsync(request);
         return Ok(new { message = result });
     }
+
+    [Authorize]
+    [HttpPost("setup-2fa")]
+    public async Task<IActionResult> SetupTwoFactor()
+    {
+        // Obtenemos el email del token JWT
+        var email = User.FindFirstValue(ClaimTypes.Email);
+        if (string.IsNullOrEmpty(email)) return Unauthorized();
+
+        var qrUri = await _authService.SetupTwoFactorAsync(email);
+
+        return Ok(new { qrUri });
+    }
+
+    [Authorize]
+    [HttpPost("confirm-2fa")]
+    public async Task<IActionResult> ConfirmTwoFactor([FromBody] Confirm2FARequest request)
+    {
+        var email = User.FindFirstValue(ClaimTypes.Email);
+        if (string.IsNullOrEmpty(email)) return Unauthorized();
+
+        var success = await _authService.ConfirmTwoFactorAsync(email, request.Code);
+
+        if (!success) return BadRequest("Invalid code.");
+
+        return Ok(new { message = "2FA activated successfully." });
+    }
+
+    [HttpPost("login-2fa")]
+    public async Task<IActionResult> Login2FA([FromBody] Verify2FARequest request)
+    {
+        var response = await _authService.Verify2FALoginAsync(request);
+        return Ok(response);
+    }
 }

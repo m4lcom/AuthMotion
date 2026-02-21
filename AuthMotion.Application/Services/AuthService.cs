@@ -11,12 +11,14 @@ public class AuthService : IAuthService
     private readonly IUserRepository _userRepository;
     private readonly IJwtTokenGenerator _jwtTokenGenerator;
     private readonly IEmailService _emailService;
+    private readonly ITwoFactorService _twoFactorService;
 
-    public AuthService(IUserRepository userRepository, IJwtTokenGenerator jwtTokenGenerator, IEmailService emailService)
+    public AuthService(IUserRepository userRepository, IJwtTokenGenerator jwtTokenGenerator, IEmailService emailService, ITwoFactorService twoFactorService)
     {
         _userRepository = userRepository;
         _jwtTokenGenerator = jwtTokenGenerator;
         _emailService = emailService;
+        _twoFactorService = twoFactorService;
     }
 
     /// <summary>
@@ -67,6 +69,13 @@ public class AuthService : IAuthService
         if (!user.IsEmailVerified)
         {
             throw new UnauthorizedException("Please verify your email before logging in.");
+        }
+
+        if (user.IsTwoFactorEnabled)
+        {
+            // Si 2FA está activado, no emitimos tokens aún. El cliente debe llamar a /login-2fa después de obtener el código.
+            return new AuthResponse
+            { RequiresTwoFactor = true, Message = "Two-factor authentication required." };
         }
 
         return await GenerateAndSaveTokensAsync(user);
@@ -150,5 +159,56 @@ public class AuthService : IAuthService
         await _userRepository.UpdateAsync(user);
 
         return "Email verified successfully. You can now log in.";
+    }
+
+    public async Task<string> SetupTwoFactorAsync(string email)
+    {
+        var user = await _userRepository.GetByEmailAsync(email);
+        if (user == null) throw new UnauthorizedException("User not found.");
+
+        // Generamos el secreto
+        var secret = _twoFactorService.GenerateSecretKey();
+
+        // Lo guardamos pero NO activamos IsTwoFactorEnabled todavía
+        // hasta que el usuario confirme que pudo vincular su app
+        user.TwoFactorSecret = secret;
+        await _userRepository.UpdateAsync(user);
+
+        // Devolvemos la URI para el QR
+        return _twoFactorService.GenerateQrCodeUri(user.Email, secret);
+    }
+
+    public async Task<bool> ConfirmTwoFactorAsync(string email, string code)
+    {
+        var user = await _userRepository.GetByEmailAsync(email);
+        if (user == null || user.TwoFactorSecret == null)
+        {
+            throw new UnauthorizedException("2FA setup not initiated.");
+        }
+
+        var isValid = _twoFactorService.ValidateCode(user.TwoFactorSecret, code);
+        if (isValid)
+        {
+            user.IsTwoFactorEnabled = true;
+            await _userRepository.UpdateAsync(user);
+        }
+        return isValid;
+    }
+
+    public async Task<AuthResponse> Verify2FALoginAsync(Verify2FARequest request)
+    {
+        var user = await _userRepository.GetByEmailAsync(request.Email);
+
+        if (user == null || user.TwoFactorSecret == null)
+            throw new UnauthorizedException("User or 2FA setup not found.");
+
+        // Validamos el código de la app del celular
+        var isValid = _twoFactorService.ValidateCode(user.TwoFactorSecret, request.Code);
+
+        if (!isValid)
+            throw new UnauthorizedException("Invalid 2FA code.");
+
+        // Si es válido, emitimos los tokens finales
+        return await GenerateAndSaveTokensAsync(user);
     }
 }

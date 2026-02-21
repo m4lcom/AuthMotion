@@ -9,4 +9,7 @@ public interface IAuthService
     Task<AuthResponse> RefreshTokenAsync(TokenRequest request);
     Task<AuthResponse> ExternalLoginAsync(string email);
     Task<string> VerifyEmailAsync(VerifyEmailRequest request);
+    Task<string> SetupTwoFactorAsync(string email);
+    Task<bool> ConfirmTwoFactorAsync(string email, string code);
+    Task<AuthResponse> Verify2FALoginAsync(Verify2FARequest request);
 }
