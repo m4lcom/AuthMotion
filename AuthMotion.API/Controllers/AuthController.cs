@@ -108,4 +108,14 @@ public class AuthController : ControllerBase
 
         return Ok(authResponse);
     }
+
+    /// <summary>
+    /// Test endpoint restricted to users with the "Admin" role.
+    /// </summary>
+    [HttpGet("admin-only")]
+    [Authorize(Roles = "Admin")]
+    public IActionResult AdminOnlyEndpoint()
+    {
+        return Ok(new { message = "Welcome to the VIP area. You have Admin privileges." });
+    }
 }
