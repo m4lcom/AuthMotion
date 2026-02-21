@@ -32,13 +32,21 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
-    /// authenticate a user and returns tokens.
+    /// authenticate a user and returns tokens via HttpOnly cookies.
     /// </summary>
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
         var result = await _authService.LoginAsync(request);
-        return Ok(result);
+
+        // Si requiere 2FA, cortamos acá y no emitimos cookies
+        if (result.RequiresTwoFactor)
+        {
+            return Ok(new { requiresTwoFactor = true, message = result.Message });
+        }
+
+        SetTokenCookies(result.Token!, result.RefreshToken!);
+        return Ok(new { message = "Login successful" });
     }
 
     /// <summary>
@@ -63,13 +71,26 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
-    /// generate a new pair of tokens using a valid refresh token.
+    /// generate a new pair of tokens reading the old ones from HttpOnly cookies.
     /// </summary>
     [HttpPost("refresh")]
-    public async Task<IActionResult> RefreshToken([FromBody] TokenRequest request)
+    public async Task<IActionResult> RefreshToken()
     {
+        // 🚨 CAMBIO CRÍTICO: El frontend ya no manda esto en el body. Lo leemos de las cookies.
+        var token = Request.Cookies["jwt"];
+        var refreshToken = Request.Cookies["refreshToken"];
+
+        if (string.IsNullOrEmpty(token) || string.IsNullOrEmpty(refreshToken))
+        {
+            return Unauthorized(new { message = "Tokens are missing in cookies." });
+        }
+
+        // Armamos el request para el servicio
+        var request = new TokenRequest { Token = token, RefreshToken = refreshToken };
         var result = await _authService.RefreshTokenAsync(request);
-        return Ok(result);
+
+        SetTokenCookies(result.Token!, result.RefreshToken!);
+        return Ok(new { message = "Tokens refreshed successfully" });
     }
 
     /// <summary>
@@ -83,31 +104,27 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
-    /// handles the callback from google and issues authmotion tokens
+    /// handles the callback from google and issues authmotion tokens via cookies
     /// </summary>
     [HttpGet("google-response")]
     public async Task<IActionResult> GoogleResponse()
     {
-        // 1. Leemos la identidad temporal que guardó el middleware en la cookie
         var result = await HttpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
 
         if (!result.Succeeded)
             return BadRequest(new { error = "Google authentication failed." });
 
-        // 2. Extraemos el Email de los claims que nos mandó Google
         var email = result.Principal.FindFirst(ClaimTypes.Email)?.Value;
 
         if (string.IsNullOrEmpty(email))
             return BadRequest(new { error = "Email not found in Google account." });
 
-        // 3. Delegamos la lógica pesada al servicio (crear usuario, generar JWT, etc.)
-        // Nota: Este método todavía no existe en IAuthService, lo creamos en el próximo paso.
         var authResponse = await _authService.ExternalLoginAsync(email);
 
-        // 4. Destruimos la cookie temporal porque ya tenemos nuestros propios tokens JWT
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
 
-        return Ok(authResponse);
+        SetTokenCookies(authResponse.Token!, authResponse.RefreshToken!);
+        return Ok(new { message = "Google login successful" });
     }
 
     /// <summary>
@@ -126,7 +143,6 @@ public class AuthController : ControllerBase
     [HttpPost("verify-email")]
     public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailRequest request)
     {
-        // El servicio se encarga de validar el código y la expiración
         var result = await _authService.VerifyEmailAsync(request);
         return Ok(new { message = result });
     }
@@ -135,7 +151,6 @@ public class AuthController : ControllerBase
     [HttpPost("setup-2fa")]
     public async Task<IActionResult> SetupTwoFactor()
     {
-        // Obtenemos el email del token JWT
         var email = User.FindFirstValue(ClaimTypes.Email);
         if (string.IsNullOrEmpty(email)) return Unauthorized();
 
@@ -162,7 +177,9 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> Login2FA([FromBody] Verify2FARequest request)
     {
         var response = await _authService.Verify2FALoginAsync(request);
-        return Ok(response);
+
+        SetTokenCookies(response.Token!, response.RefreshToken!);
+        return Ok(new { message = "2FA login successful" });
     }
 
     /// <summary>
@@ -170,7 +187,7 @@ public class AuthController : ControllerBase
     /// Protected by Rate Limiting to prevent email spam.
     /// </summary>
     [HttpPost("forgot-password")]
-    [EnableRateLimiting("PasswordRecovery")] // 👈 ¡Acá activamos el escudo!
+    [EnableRateLimiting("PasswordRecovery")]
     public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
     {
         var result = await _authService.ForgotPasswordAsync(request);
@@ -185,5 +202,40 @@ public class AuthController : ControllerBase
     {
         var result = await _authService.ResetPasswordAsync(request);
         return Ok(new { message = result });
+    }
+
+    /// <summary>
+    /// Clears the authentication cookies to log the user out.
+    /// </summary>
+    [HttpPost("logout")]
+    public IActionResult Logout()
+    {
+        Response.Cookies.Delete("jwt");
+        Response.Cookies.Delete("refreshToken");
+        return Ok(new { message = "Logged out successfully" });
+    }
+
+    // --- MÉTODOS PRIVADOS ---
+
+    private void SetTokenCookies(string token, string refreshToken)
+    {
+        var cookieOptions = new CookieOptions
+        {
+            HttpOnly = true, // 🛡️ JavaScript no puede leerla (Previene XSS)
+            Secure = true,   // 🔒 Solo viaja por HTTPS
+            SameSite = SameSiteMode.Strict, // 🛑 Previene ataques CSRF
+            Expires = DateTime.UtcNow.AddMinutes(15) // Mismo tiempo que el JWT
+        };
+
+        var refreshCookieOptions = new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = true,
+            SameSite = SameSiteMode.Strict,
+            Expires = DateTime.UtcNow.AddDays(7) // Mismo tiempo que el Refresh Token
+        };
+
+        Response.Cookies.Append("jwt", token, cookieOptions);
+        Response.Cookies.Append("refreshToken", refreshToken, refreshCookieOptions);
     }
 }
