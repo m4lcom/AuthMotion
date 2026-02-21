@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using AuthMotion.Infrastructure.Persistence;
+using AuthMotion.Infrastructure.Services;
 using AuthMotion.Infrastructure.Repositories;
 using AuthMotion.Application.Interfaces;
 using AuthMotion.Application.Services;
@@ -22,6 +23,7 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
+builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 
 builder.Services.AddOpenApi();
 

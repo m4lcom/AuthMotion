@@ -11,8 +11,9 @@ public class User
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     // verified email
-    public bool IsEmailVerified { get; set; }
-    public string? EmailVerificationToken { get; set; }
+    public bool IsEmailVerified { get; set; } = false;
+    public string? VerificationToken { get; set; }
+    public DateTime? VerificationTokenExpiryTime { get; set; }
 
     // 2FA security
     public bool IsTwoFactorEnabled { get; set; }

@@ -8,4 +8,5 @@ public interface IAuthService
     Task<AuthResponse> LoginAsync(LoginRequest request);
     Task<AuthResponse> RefreshTokenAsync(TokenRequest request);
     Task<AuthResponse> ExternalLoginAsync(string email);
+    Task<string> VerifyEmailAsync(VerifyEmailRequest request);
 }

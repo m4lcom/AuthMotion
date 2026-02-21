@@ -118,4 +118,15 @@ public class AuthController : ControllerBase
     {
         return Ok(new { message = "Welcome to the VIP area. You have Admin privileges." });
     }
+
+    /// <summary>
+    /// Verifies the user's email using the 6-digit OTP code.
+    /// </summary>
+    [HttpPost("verify-email")]
+    public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailRequest request)
+    {
+        // El servicio se encarga de validar el código y la expiración
+        var result = await _authService.VerifyEmailAsync(request);
+        return Ok(new { message = result });
+    }
 }

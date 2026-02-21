@@ -10,11 +10,13 @@ public class AuthService : IAuthService
 {
     private readonly IUserRepository _userRepository;
     private readonly IJwtTokenGenerator _jwtTokenGenerator;
+    private readonly IEmailService _emailService;
 
-    public AuthService(IUserRepository userRepository, IJwtTokenGenerator jwtTokenGenerator)
+    public AuthService(IUserRepository userRepository, IJwtTokenGenerator jwtTokenGenerator, IEmailService emailService)
     {
         _userRepository = userRepository;
         _jwtTokenGenerator = jwtTokenGenerator;
+        _emailService = emailService;
     }
 
     /// <summary>
@@ -27,14 +29,28 @@ public class AuthService : IAuthService
             throw new ConflictException("Email is already registered.");
         }
 
+        var otpCode = new Random().Next(100000, 999999).ToString();
+
         var user = new User
         {
             Email = request.Email,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password)
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
+            IsEmailVerified = false,
+            VerificationToken = otpCode,
+            VerificationTokenExpiryTime = DateTime.UtcNow.AddMinutes(15)
         };
 
         await _userRepository.AddAsync(user);
-        return "User registered successfully.";
+
+        var emailBody = $@"
+            <h2>Bienvenido a AuthMotion</h2>
+            <p>Tu código de verificación de 6 dígitos es:</p>
+            <h1 style='color: #2563eb; letter-spacing: 5px;'>{otpCode}</h1>
+            <p>Si no solicitaste este registro, podés ignorar este correo.</p>";
+
+        await _emailService.SendEmailAsync(user.Email, "Verifica tu cuenta - AuthMotion", emailBody);
+
+        return "User registered successfully, please check your email for the verification code.";
     }
 
     /// <summary>
@@ -46,6 +62,11 @@ public class AuthService : IAuthService
         if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
         {
             throw new UnauthorizedException("Invalid credentials.");
+        }
+
+        if (!user.IsEmailVerified)
+        {
+            throw new UnauthorizedException("Please verify your email before logging in.");
         }
 
         return await GenerateAndSaveTokensAsync(user);
@@ -108,5 +129,26 @@ public class AuthService : IAuthService
         await _userRepository.UpdateAsync(user);
 
         return new AuthResponse { Token = token, RefreshToken = refreshToken };
+    }
+
+    public async Task<string> VerifyEmailAsync(VerifyEmailRequest request)
+    {
+        var user = await _userRepository.GetByEmailAsync(request.Email);
+        if (user == null) throw new UnauthorizedException("User not found.");
+
+        if (user.IsEmailVerified) return "Email is already verified.";
+
+        if (user.VerificationToken != request.Code || user.VerificationTokenExpiryTime <= DateTime.UtcNow)
+        {
+            throw new UnauthorizedException("Invalid or expired verification code.");
+        }
+
+        user.IsEmailVerified = true;
+        user.VerificationToken = null;
+        user.VerificationTokenExpiryTime = null;
+
+        await _userRepository.UpdateAsync(user);
+
+        return "Email verified successfully. You can now log in.";
     }
 }
