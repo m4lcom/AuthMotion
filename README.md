@@ -91,24 +91,31 @@ Create a `.env` file in the root directory:
 
 ```env
 # Database Configuration
-DB_CONNECTION_STRING=Server=db;Database=AuthMotionDb;User Id=sa;Password=YourStrongPassword123!;TrustServerCertificate=True;
+# This overrides 'ConnectionStrings:DefaultConnection'
+ConnectionStrings__DefaultConnection=Server=sqlserver;Database=AuthMotionDb;User Id=sa;Password=AuthMotion_Password123!;TrustServerCertificate=True;
 
 # JWT Security
-JWT_SECRET=Your_Super_Secret_Key_At_Least_32_Chars_Long
-JWT_ISSUER=AuthMotion
-JWT_AUDIENCE=AuthMotion_Clients
+# This overrides 'JwtSettings:Secret', etc.
+JwtSettings__Secret=Your_Super_Secret_Key_At_Least_32_Chars_Long
+JwtSettings__Issuer=AuthMotion-API
+JwtSettings__Audience=AuthMotion-Client
+JwtSettings__ExpiryMinutes=60
 
 # Google OAuth2
-GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=your-google-client-secret
+# This overrides 'Authentication:Google:ClientId', etc.
+Authentication__Google__ClientId=your-google-id.apps.googleusercontent.com
+Authentication__Google__ClientSecret=your-google-secret
 
-# SMTP / Email Settings
-SMTP_HOST=smtp.yourprovider.com
-SMTP_PORT=587
-SMTP_USER=your-email@provider.com
-SMTP_PASS=your-app-password
+# Email / SMTP Settings (Unified with EmailSettings & Username)
+# This overrides 'EmailSettings:Host', 'EmailSettings:Username', etc.
+EmailSettings__Host=sandbox.smtp.mailtrap.io
+EmailSettings__Port=2525
+EmailSettings__Username=your-mailtrap-user
+EmailSettings__Password=your-mailtrap-pass
+EmailSettings__EnableSsl=true
+EmailSettings__SenderEmail=noreply@authmotion.com
+EmailSettings__SenderName=AuthMotion Security
 ```
-
 ---
 
 ## 🐳 Getting Started with Docker
