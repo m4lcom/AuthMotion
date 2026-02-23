@@ -1,5 +1,5 @@
 # AuthMotion 🛡️
-### Enterprise-Grade Identity & Access Management (IAM) System
+### Enterprise-Grade Identity & Access Management System
 
 `AuthMotion` is a high-performance, secure, and scalable authentication engine built with `.NET 10`. It implements `Clean Architecture` to provide a robust identity solution, ranging from OAuth2 integrations to advanced multi-factor security.
 
@@ -64,24 +64,6 @@ AuthMotion/
 
 ---
 
-## 🧪 Quality Assurance
-We don't guess; we verify. The system includes a comprehensive testing suite focusing on business logic reliability.
-
-- `Unit Testing:` xUnit
-
-- `Mocking:` Moq
-
-- `Assertions:` FluentAssertions
-
-- `Pattern:` AAA (Arrange, Act, Assert)
-
-```Bash
-# Execute the test suite
-dotnet test
-```
-
----
-
 ## 🔐 Environment Variables & Security
 
 To run this project, you need to configure the following environment variables. **Never commit your actual `.env` file to version control.** A template is provided in `.env.example`.
@@ -134,6 +116,24 @@ docker-compose up --build
 
 - Explore the API with Scalar: </br>
 **http://localhost:8080/scalar/v1**
+
+---
+
+## 🧪 Quality Assurance
+We don't guess; we verify. The system includes a comprehensive testing suite focusing on business logic reliability.
+
+- `Unit Testing:` xUnit
+
+- `Mocking:` Moq
+
+- `Assertions:` FluentAssertions
+
+- `Pattern:` AAA (Arrange, Act, Assert)
+
+```Bash
+# Execute the test suite
+dotnet test
+```
 
 ---
 
