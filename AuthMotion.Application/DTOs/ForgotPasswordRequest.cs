@@ -1,3 +1,3 @@
 namespace AuthMotion.Application.DTOs;
 
-public record ForgotPasswordRequest(string Email);
+public sealed record ForgotPasswordRequest(string Email);

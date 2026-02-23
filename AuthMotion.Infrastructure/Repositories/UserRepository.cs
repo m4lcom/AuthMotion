@@ -32,16 +32,16 @@ public class UserRepository : IUserRepository
     }
 
     /// <summary>
-    /// Finds a user by email. Uses AsNoTracking for performance.
+    /// Finds a user by email. 
+    /// Note: Entity is tracked by default so updates can be applied and saved easily.
     /// </summary>
     public async Task<User?> GetByEmailAsync(string email)
     {
-        // Added AsNoTracking since we often use this for validation only
         return await _dbContext.Users.FirstOrDefaultAsync(u => u.Email == email);
     }
 
     /// <summary>
-    /// Updates user information (e.g., Refresh Tokens).
+    /// Updates user information and commits changes to the database.
     /// </summary>
     public async Task UpdateAsync(User user)
     {

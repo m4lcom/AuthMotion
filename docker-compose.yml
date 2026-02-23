@@ -4,11 +4,37 @@ services:
     container_name: authmotion_db
     environment:
       - ACCEPT_EULA=Y
-      - MSSQL_SA_PASSWORD=AuthMotion_Password123!
+      - MSSQL_SA_PASSWORD=${DB_PASSWORD}
     ports:
       - "14333:1433"
     volumes:
       - sqlvolume:/var/opt/mssql
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: authmotion_api
+    depends_on:
+      - sqlserver
+    ports:
+      - "8080:8080"
+    environment:
+      - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=AuthMotionDb;User Id=sa;Password=${DB_PASSWORD};TrustServerCertificate=True;
+      - ASPNETCORE_ENVIRONMENT=Development
+
+      # Secretos
+      - JwtSettings__Secret=${JWT_SECRET}
+      - Authentication__Google__ClientId=${GOOGLE_CLIENT_ID}
+      - Authentication__Google__ClientSecret=${GOOGLE_CLIENT_SECRET}
+
+      # CONFIGURACIÓN SMTP (Ahora coincide con tu código C#)
+      - SmtpSettings__Host=sandbox.smtp.mailtrap.io
+      - SmtpSettings__Port=2525
+      - SmtpSettings__User=${MAILTRAP_USER}
+      - SmtpSettings__Password=${MAILTRAP_PASS}
+      - SmtpSettings__SenderEmail=noreply@authmotion.com
+      - SmtpSettings__SenderName=AuthMotion Security
 
 volumes:
   sqlvolume:

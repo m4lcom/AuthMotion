@@ -23,7 +23,6 @@ public class SmtpEmailService : IEmailService
     {
         var email = new MimeMessage();
 
-        // We set a default sender if none is provided in the configuration
         var senderEmail = _configuration["SmtpSettings:SenderEmail"] ?? "noreply@authmotion.com";
         var senderName = _configuration["SmtpSettings:SenderName"] ?? "AuthMotion Security";
 
@@ -32,12 +31,21 @@ public class SmtpEmailService : IEmailService
         email.Subject = subject;
         email.Body = new TextPart(TextFormat.Html) { Text = body };
 
-        using var smtp = new SmtpClient();
+        var host = _configuration["SmtpSettings:Host"]
+            ?? throw new InvalidOperationException("SMTP Host is not configured.");
 
-        var host = _configuration["SmtpSettings:Host"];
-        var port = int.Parse(_configuration["SmtpSettings:Port"] ?? "2525");
-        var user = _configuration["SmtpSettings:User"];
-        var pass = _configuration["SmtpSettings:Password"];
+        var user = _configuration["SmtpSettings:User"]
+            ?? throw new InvalidOperationException("SMTP User is not configured.");
+
+        var pass = _configuration["SmtpSettings:Password"]
+            ?? throw new InvalidOperationException("SMTP Password is not configured.");
+
+        if (!int.TryParse(_configuration["SmtpSettings:Port"], out var port))
+        {
+            port = 2525; // Safe fallback
+        }
+
+        using var smtp = new SmtpClient();
 
         // Connect and authenticate
         await smtp.ConnectAsync(host, port, SecureSocketOptions.StartTls);

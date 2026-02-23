@@ -1,9 +1,3 @@
 namespace AuthMotion.Application.DTOs;
 
-public class AuthResponse
-{
-    public string? Token { get; set; }
-    public string? RefreshToken { get; set; }
-    public bool RequiresTwoFactor { get; set; } = false;
-    public string? Message { get; set; }
-}
+public sealed record AuthResponse(string? Token, string? RefreshToken, bool RequiresTwoFactor = false, string? Message = null);

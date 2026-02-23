@@ -24,7 +24,8 @@ public class JwtTokenGenerator : IJwtTokenGenerator
     public string GenerateToken(User user)
     {
         var jwtSettings = _configuration.GetSection("JwtSettings");
-        var secretKey = jwtSettings["Secret"] ?? throw new Exception("JWT Secret is missing.");
+        var secretKey = jwtSettings["Secret"]
+            ?? throw new InvalidOperationException("JWT Secret is missing from configuration.");
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
 
@@ -38,11 +39,17 @@ public class JwtTokenGenerator : IJwtTokenGenerator
 
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
+        // Safe parsing with a fallback of 15 minutes if missing or invalid
+        if (!double.TryParse(jwtSettings["ExpiryMinutes"], out double expiryMinutes))
+        {
+            expiryMinutes = 15;
+        }
+
         var token = new JwtSecurityToken(
             issuer: jwtSettings["Issuer"],
             audience: jwtSettings["Audience"],
             claims: claims,
-            expires: DateTime.UtcNow.AddMinutes(double.Parse(jwtSettings["ExpiryMinutes"]!)),
+            expires: DateTime.UtcNow.AddMinutes(expiryMinutes),
             signingCredentials: creds
         );
 
@@ -54,28 +61,27 @@ public class JwtTokenGenerator : IJwtTokenGenerator
     /// </summary>
     public string GenerateRefreshToken()
     {
-        var randomNumber = new byte[64];
-        using var rng = RandomNumberGenerator.Create();
-        rng.GetBytes(randomNumber);
+        // Modern .NET way to generate secure bytes
+        var randomNumber = RandomNumberGenerator.GetBytes(64);
         return Convert.ToBase64String(randomNumber);
     }
 
     /// <summary>
     /// Validates an expired or valid token and extracts the claims principal.
-    /// Useful for token refresh scenarios.
     /// </summary>
     public ClaimsPrincipal GetPrincipalFromExpiredToken(string token)
     {
         var jwtSettings = _configuration.GetSection("JwtSettings");
-        var secretKey = jwtSettings["Secret"];
+        var secretKey = jwtSettings["Secret"]
+            ?? throw new InvalidOperationException("JWT Secret is missing.");
 
         var tokenValidationParameters = new TokenValidationParameters
         {
             ValidateAudience = true,
             ValidateIssuer = true,
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey!)),
-            ValidateLifetime = false, // We ignore expiration to allow refreshing
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
+            ValidateLifetime = false, // Ignored to allow refresh logic
             ValidIssuer = jwtSettings["Issuer"],
             ValidAudience = jwtSettings["Audience"]
         };
@@ -83,11 +89,10 @@ public class JwtTokenGenerator : IJwtTokenGenerator
         var tokenHandler = new JwtSecurityTokenHandler();
         var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out SecurityToken securityToken);
 
-        // Security check: Ensure the token uses the HmacSha256 algorithm
         if (securityToken is not JwtSecurityToken jwtSecurityToken ||
             !jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase))
         {
-            throw new SecurityTokenException("Invalid token algorithm");
+            throw new SecurityTokenException("Invalid token algorithm.");
         }
 
         return principal;

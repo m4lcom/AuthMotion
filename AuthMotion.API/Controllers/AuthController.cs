@@ -16,9 +16,12 @@ public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
 
-    public AuthController(IAuthService authService)
+    private readonly IWebHostEnvironment _env;
+
+    public AuthController(IAuthService authService, IWebHostEnvironment env)
     {
         _authService = authService;
+        _env = env;
     }
 
     /// <summary>
@@ -39,7 +42,7 @@ public class AuthController : ControllerBase
     {
         var result = await _authService.LoginAsync(request);
 
-        // Si requiere 2FA, cortamos acá y no emitimos cookies
+        // If 2FA is required, we stop here and do not issue cookies
         if (result.RequiresTwoFactor)
         {
             return Ok(new { requiresTwoFactor = true, message = result.Message });
@@ -76,7 +79,7 @@ public class AuthController : ControllerBase
     [HttpPost("refresh")]
     public async Task<IActionResult> RefreshToken()
     {
-        // 🚨 CAMBIO CRÍTICO: El frontend ya no manda esto en el body. Lo leemos de las cookies.
+        // CRITICAL: The frontend no longer sends this in the body. We read it from cookies.
         var token = Request.Cookies["jwt"];
         var refreshToken = Request.Cookies["refreshToken"];
 
@@ -85,8 +88,9 @@ public class AuthController : ControllerBase
             return Unauthorized(new { message = "Tokens are missing in cookies." });
         }
 
-        // Armamos el request para el servicio
-        var request = new TokenRequest { Token = token, RefreshToken = refreshToken };
+        // Build the request for the service
+        var request = new TokenRequest(token, refreshToken);
+
         var result = await _authService.RefreshTokenAsync(request);
 
         SetTokenCookies(result.Token!, result.RefreshToken!);
@@ -147,6 +151,9 @@ public class AuthController : ControllerBase
         return Ok(new { message = result });
     }
 
+    /// <summary>
+    /// Initiates the 2FA setup process by generating a QR code URI for the user's authenticator app.
+    /// </summary>
     [Authorize]
     [HttpPost("setup-2fa")]
     public async Task<IActionResult> SetupTwoFactor()
@@ -159,6 +166,9 @@ public class AuthController : ControllerBase
         return Ok(new { qrUri });
     }
 
+    /// <summary>
+    /// Confirms the 2FA setup by validating the code from the user's authenticator app and activates 2FA on their account.
+    /// </summary>
     [Authorize]
     [HttpPost("confirm-2fa")]
     public async Task<IActionResult> ConfirmTwoFactor([FromBody] Confirm2FARequest request)
@@ -173,6 +183,9 @@ public class AuthController : ControllerBase
         return Ok(new { message = "2FA activated successfully." });
     }
 
+    /// <summary>
+    /// Handles the second step of the login process when 2FA is enabled. Validates the 2FA code and issues tokens if successful.
+    /// </summary>
     [HttpPost("login-2fa")]
     public async Task<IActionResult> Login2FA([FromBody] Verify2FARequest request)
     {
@@ -215,24 +228,24 @@ public class AuthController : ControllerBase
         return Ok(new { message = "Logged out successfully" });
     }
 
-    // --- MÉTODOS PRIVADOS ---
+    // --- PRIVATE METHODS ---
 
     private void SetTokenCookies(string token, string refreshToken)
     {
         var cookieOptions = new CookieOptions
         {
-            HttpOnly = true, // 🛡️ JavaScript no puede leerla (Previene XSS)
-            Secure = true,   // 🔒 Solo viaja por HTTPS
-            SameSite = SameSiteMode.Strict, // 🛑 Previene ataques CSRF
-            Expires = DateTime.UtcNow.AddMinutes(15) // Mismo tiempo que el JWT
+            HttpOnly = true, // JavaScript cannot read it (Prevents XSS)
+            Secure = _env.IsProduction(),   // Travels only over HTTPS in production
+            SameSite = SameSiteMode.Lax, // Required for Next.js to API communication
+            Expires = DateTime.UtcNow.AddMinutes(15) // Matches JWT expiration
         };
 
         var refreshCookieOptions = new CookieOptions
         {
             HttpOnly = true,
-            Secure = true,
-            SameSite = SameSiteMode.Strict,
-            Expires = DateTime.UtcNow.AddDays(7) // Mismo tiempo que el Refresh Token
+            Secure = _env.IsProduction(),
+            SameSite = SameSiteMode.Lax,
+            Expires = DateTime.UtcNow.AddDays(7)
         };
 
         Response.Cookies.Append("jwt", token, cookieOptions);

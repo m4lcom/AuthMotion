@@ -1,8 +1,3 @@
 namespace AuthMotion.Application.DTOs;
 
-public record Verify2FARequest(
-    string Email,
-    string Code
-)
-{
-}
+public sealed record Verify2FARequest(string Email, string Code);
