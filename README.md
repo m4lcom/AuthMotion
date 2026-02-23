@@ -82,6 +82,35 @@ dotnet test
 
 ---
 
+## 🔐 Environment Variables & Security
+
+To run this project, you need to configure the following environment variables. **Never commit your actual `.env` file to version control.** A template is provided in `.env.example`.
+
+### Configuration Template
+Create a `.env` file in the root directory:
+
+```env
+# Database Configuration
+DB_CONNECTION_STRING=Server=db;Database=AuthMotionDb;User Id=sa;Password=YourStrongPassword123!;TrustServerCertificate=True;
+
+# JWT Security
+JWT_SECRET=Your_Super_Secret_Key_At_Least_32_Chars_Long
+JWT_ISSUER=AuthMotion
+JWT_AUDIENCE=AuthMotion_Clients
+
+# Google OAuth2
+GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+
+# SMTP / Email Settings
+SMTP_HOST=smtp.yourprovider.com
+SMTP_PORT=587
+SMTP_USER=your-email@provider.com
+SMTP_PASS=your-app-password
+```
+
+---
+
 ## 🐳 Getting Started with Docker
 The entire ecosystem is containerized for immediate deployment.
 
