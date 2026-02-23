@@ -6,33 +6,24 @@ using Microsoft.Extensions.Logging;
 namespace AuthMotion.API.Middlewares;
 
 /// <summary>
-/// Centralized error handling middleware implementing RFC 7807 (ProblemDetails).
+/// Centralized error handling implementing RFC 7807 (ProblemDetails).
 /// </summary>
-public class GlobalExceptionHandler : IExceptionHandler
+public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IExceptionHandler
 {
-    private readonly ILogger<GlobalExceptionHandler> _logger;
-
-    public GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger)
-    {
-        _logger = logger;
-    }
-
     public async ValueTask<bool> TryHandleAsync(
         HttpContext httpContext,
         Exception exception,
         CancellationToken cancellationToken)
     {
-        // 1. We ALWAYS log the actual exception so it appears in Docker logs
-        _logger.LogError(exception, "An unhandled exception occurred during the request.");
+        // Log the exception with path context for better traceability in Docker logs
+        logger.LogError(exception, "Unhandled exception occurred during request to {Path}", httpContext.Request.Path);
 
-        // 2. Map domain exceptions to HTTP status codes
         int statusCode = exception switch
         {
             BaseException domainEx => domainEx.StatusCode,
             _ => StatusCodes.Status500InternalServerError
         };
 
-        // 3. Format the response using the ProblemDetails standard
         var problemDetails = new ProblemDetails
         {
             Status = statusCode,
@@ -40,6 +31,9 @@ public class GlobalExceptionHandler : IExceptionHandler
             Detail = statusCode == 500 ? "An unexpected error occurred. Please try again later." : exception.Message,
             Instance = httpContext.Request.Path
         };
+
+        // Add TraceId to allow matching frontend errors with backend logs
+        problemDetails.Extensions.Add("traceId", httpContext.TraceIdentifier);
 
         httpContext.Response.StatusCode = statusCode;
         await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);

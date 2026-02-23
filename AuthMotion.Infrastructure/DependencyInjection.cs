@@ -10,6 +10,7 @@ using AuthMotion.Infrastructure.Repositories;
 using AuthMotion.Infrastructure.Services;
 using AuthMotion.Infrastructure.Authentication;
 using AuthMotion.Application.Interfaces;
+using Microsoft.AspNetCore.Builder; // Necesario para WebApplication
 
 namespace AuthMotion.Infrastructure.Extensions;
 
@@ -17,17 +18,14 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructureServices(this IServiceCollection services, IConfiguration configuration)
     {
-        // 1. Database Configuration
         services.AddDbContext<AppDbContext>(options =>
             options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
 
-        // 2. Infrastructure Services & Repositories
         services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IEmailService, SmtpEmailService>();
         services.AddScoped<ITwoFactorService, TwoFactorService>();
 
-        // 3. Authentication Configuration (JWT + Google)
         var jwtSettings = configuration.GetSection("JwtSettings");
         var secretKey = jwtSettings["Secret"] ?? throw new Exception("JWT Secret missing");
 
@@ -48,6 +46,19 @@ public static class DependencyInjection
                 ValidAudience = jwtSettings["Audience"],
                 IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey))
             };
+
+            // SOLUCIÓN: Le enseñamos a .NET a extraer el token de la cookie "jwt"
+            options.Events = new JwtBearerEvents
+            {
+                OnMessageReceived = context =>
+                {
+                    if (context.Request.Cookies.ContainsKey("jwt"))
+                    {
+                        context.Token = context.Request.Cookies["jwt"];
+                    }
+                    return Task.CompletedTask;
+                }
+            };
         })
         .AddCookie()
         .AddGoogle(options =>
@@ -59,5 +70,15 @@ public static class DependencyInjection
         });
 
         return services;
+    }
+
+    // ARREGLO ARQUITECTÓNICO: Movemos el inicializador de BD a la capa que conoce el DbContext
+    public static async Task InitializeDatabaseAsync(this WebApplication app)
+    {
+        using var scope = app.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        await context.Database.MigrateAsync();
+        await DatabaseSeeder.SeedAsync(context);
     }
 }

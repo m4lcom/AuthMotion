@@ -20,15 +20,15 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=AuthMotionDb;User Id=sa;Password=${DB_PASSWORD};TrustServerCertificate=True;
       - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=AuthMotionDb;User Id=sa;Password=${DB_PASSWORD};TrustServerCertificate=True;
 
-      # Secretos
+      # JWT and External Auth Secrets
       - JwtSettings__Secret=${JWT_SECRET}
       - Authentication__Google__ClientId=${GOOGLE_CLIENT_ID}
       - Authentication__Google__ClientSecret=${GOOGLE_CLIENT_SECRET}
 
-      # CONFIGURACIÓN SMTP (Ahora coincide con tu código C#)
+      # SMTP Configuration (English Keys)
       - SmtpSettings__Host=sandbox.smtp.mailtrap.io
       - SmtpSettings__Port=2525
       - SmtpSettings__User=${MAILTRAP_USER}
