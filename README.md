@@ -1,7 +1,7 @@
 # AuthMotion 🛡️
 ### Enterprise-Grade Identity & Access Management (IAM) System
 
-**`AuthMotion`** is a high-performance, secure, and scalable authentication engine built with **`.NET 10`**. It implements **`Clean Architecture`** to provide a robust identity solution, ranging from OAuth2 integrations to advanced multi-factor security.
+`AuthMotion` is a high-performance, secure, and scalable authentication engine built with `.NET 10`. It implements `Clean Architecture` to provide a robust identity solution, ranging from OAuth2 integrations to advanced multi-factor security.
 
 ---
 
@@ -9,26 +9,26 @@
 The system manages the entire user lifecycle with a focus on modern security standards:
 
 - **Core Authentication:**
-    - **`Register & Login:`** Secure flows with **BCrypt** password hashing.
+    - `Register & Login:` Secure flows with **BCrypt** password hashing.
       
-    - **`Google OAuth2:`** Native integration for social authentication.
+    - `Google OAuth2:` Native integration for social authentication.
     
-    - **`Logout:`** Complete session and cookie invalidation.
+    - `Logout:` Complete session and cookie invalidation.
 
 - **Token Management:**
-    - **`Dual Token Strategy:`** Access Tokens (JWT) + Refresh Tokens.
+    - `Dual Token Strategy:` Access Tokens (JWT) + Refresh Tokens.
     
-    - **`Security-First Delivery:`** All tokens are delivered via **HttpOnly, Secure, and SameSite** cookies to eliminate XSS and mitigate CSRF risks.
+    - `Security-First Delivery:` All tokens are delivered via **HttpOnly, Secure, and SameSite** cookies to eliminate XSS and mitigate CSRF risks.
 
 - **Advanced Security:**
-    - **`Two-Factor Authentication (2FA):`** TOTP support (Authenticator Apps) with QR Code generation.
+    - `Two-Factor Authentication (2FA):` TOTP support (Authenticator Apps) with QR Code generation.
     
-    - **`Role-Based Access Control (RBAC):`** Granular permission management across endpoints.
+    - `Role-Based Access Control (RBAC):` Granular permission management across endpoints.
 
 - **Account Recovery & Lifecycle:**
-    - **`Email Verification:`** Built-in flow for account activation.
+    - `Email Verification:` Built-in flow for account activation.
     
-    - **`Forgot/Reset Password:`** Secure token-based password recovery.
+    - `Forgot/Reset Password:` Secure token-based password recovery.
 
 ---
 
@@ -36,15 +36,15 @@ The system manages the entire user lifecycle with a focus on modern security sta
 
 This project follows the **Onion Architecture** pattern, ensuring the business logic remains independent of external frameworks.
 
-- **`Framework:`** .NET 10 (C# 14/15 features)
+- `Framework:` .NET 10 (C# 14/15 features)
   
-- **`Architecture:`** Clean Architecture (Domain, Application, Infrastructure, API)
+- `Architecture:` Clean Architecture (Domain, Application, Infrastructure, API)
 
-- **`Database:`** SQL Server via **Entity Framework Core 10**
+- `Database:` SQL Server via **Entity Framework Core 10**
 
-- **`Documentation:`** **Scalar** (Interactive API reference)
+- `Documentation:` **Scalar** (Interactive API reference)
 
-- **`Environment:`** Full **Docker** orchestration
+- `Environment:` Full **Docker** orchestration
 
 ---
 
@@ -67,13 +67,13 @@ AuthMotion/
 ## 🧪 Quality Assurance
 We don't guess; we verify. The system includes a comprehensive testing suite focusing on business logic reliability.
 
-- **`Unit Testing:`** xUnit
+- `Unit Testing:` xUnit
 
-- **`Mocking:`** Moq
+- `Mocking:` Moq
 
-- **`Assertions:`** FluentAssertions
+- `Assertions:` FluentAssertions
 
-- **`Pattern:`** AAA (Arrange, Act, Assert)
+- `Pattern:` AAA (Arrange, Act, Assert)
 
 ```Bash
 # Execute the test suite
