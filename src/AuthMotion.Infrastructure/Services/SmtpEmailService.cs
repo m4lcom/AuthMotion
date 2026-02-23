@@ -23,34 +23,26 @@ public class SmtpEmailService : IEmailService
     {
         var email = new MimeMessage();
 
-        var senderEmail = _configuration["SmtpSettings:SenderEmail"] ?? "noreply@authmotion.com";
-        var senderName = _configuration["SmtpSettings:SenderName"] ?? "AuthMotion Security";
+        var senderEmail = _configuration["EmailSettings:SenderEmail"] ?? "noreply@authmotion.com";
+        var senderName = _configuration["EmailSettings:SenderName"] ?? "AuthMotion Security";
 
         email.From.Add(new MailboxAddress(senderName, senderEmail));
         email.To.Add(MailboxAddress.Parse(toEmail));
         email.Subject = subject;
         email.Body = new TextPart(TextFormat.Html) { Text = body };
 
-        var host = _configuration["SmtpSettings:Host"]
+        var host = _configuration["EmailSettings:Host"]
             ?? throw new InvalidOperationException("SMTP Host is not configured.");
-
-        var user = _configuration["SmtpSettings:User"]
-            ?? throw new InvalidOperationException("SMTP User is not configured.");
-
-        var pass = _configuration["SmtpSettings:Password"]
+        var user = _configuration["EmailSettings:Username"]
+            ?? throw new InvalidOperationException("SMTP Username is not configured.");
+        var pass = _configuration["EmailSettings:Password"]
             ?? throw new InvalidOperationException("SMTP Password is not configured.");
 
-        if (!int.TryParse(_configuration["SmtpSettings:Port"], out var port))
-        {
-            port = 2525; // Safe fallback
-        }
+        if (!int.TryParse(_configuration["EmailSettings:Port"], out var port)) port = 2525;
 
         using var smtp = new SmtpClient();
-
-        // Connect and authenticate
         await smtp.ConnectAsync(host, port, SecureSocketOptions.StartTls);
         await smtp.AuthenticateAsync(user, pass);
-
         await smtp.SendAsync(email);
         await smtp.DisconnectAsync(true);
     }

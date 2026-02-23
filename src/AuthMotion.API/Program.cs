@@ -1,8 +1,13 @@
 using AuthMotion.Infrastructure.Extensions;
 using AuthMotion.API.Extensions;
 using Scalar.AspNetCore;
+using DotNetEnv;
+
+Env.Load();
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Configuration.AddEnvironmentVariables();
 
 // 1. Register dependencies by layer
 // Extension methods defined in Infrastructure and API layers

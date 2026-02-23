@@ -23,18 +23,19 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=AuthMotionDb;User Id=sa;Password=${DB_PASSWORD};TrustServerCertificate=True;
 
-      # JWT and External Auth Secrets
+      # JWT & Google
       - JwtSettings__Secret=${JWT_SECRET}
       - Authentication__Google__ClientId=${GOOGLE_CLIENT_ID}
       - Authentication__Google__ClientSecret=${GOOGLE_CLIENT_SECRET}
 
-      # SMTP Configuration (English Keys)
-      - SmtpSettings__Host=sandbox.smtp.mailtrap.io
-      - SmtpSettings__Port=2525
-      - SmtpSettings__User=${MAILTRAP_USER}
-      - SmtpSettings__Password=${MAILTRAP_PASS}
-      - SmtpSettings__SenderEmail=noreply@authmotion.com
-      - SmtpSettings__SenderName=AuthMotion Security
+      # Email (Unificado con EmailSettings y Username)
+      - EmailSettings__Host=sandbox.smtp.mailtrap.io
+      - EmailSettings__Port=2525
+      - EmailSettings__Username=${MAILTRAP_USER}
+      - EmailSettings__Password=${MAILTRAP_PASS}
+      - EmailSettings__EnableSsl=true
+      - EmailSettings__SenderEmail=noreply@authmotion.com
+      - EmailSettings__SenderName=AuthMotion Security
 
 volumes:
   sqlvolume:
